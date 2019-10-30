@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  serverlessExample
+
+  Sample SAM Template for serverlessExample
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 5
+
+Parameters:
+  dbname:
+    Type: String
+    Default: example
+  username:
+    Type: String
+    Default: postgres
+  password:
+    Type: String
+    Default: password
+  host:
+    Type: String
+    Default: localhost
+  jwt:
+    Type: String
+    Default: default
+  redisurl:
+    Type: String
+    Default: localhost:6379
+  emailQueue:
+    Type: String
+    Default: default
+  emailQueueUrl:
+    Type: String
+    Default: default
+
+Resources:
+  ExampleApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: MyLambdaTokenAuthorizer
+        Authorizers:
+          MyLambdaTokenAuthorizer:
+            FunctionArn: !GetAtt CustomAuthorizerFunction.Arn
+  CustomAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: bin/authorizer
+      Handler: authorizer
+      Runtime: go1.x
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          db_user: !Ref username
+          db_pass: !Ref password
+          db_name: !Ref dbname
+          db_host: !Ref host
+          jwt_key: !Ref jwt
+          redis_url: !Ref redisurl
+  SignupFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Timeout: 10
+      CodeUri: bin/signup
+      Handler: signup
+      Runtime: go1.x
+      Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Events:
+        Signup:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            RestApiId: !Ref ExampleApi
+            Auth:
+              Authorizer: 'NONE'
+            Path: /signup
+            Method: POST
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          db_user: !Ref username
+          db_pass: !Ref password
+          db_name: !Ref dbname
+          db_host: !Ref host
+          jwt_key: !Ref jwt
+          email_queue: !Ref emailQueue
+          email_queue_url: !Ref emailQueueUrl
+          redis_url: !Ref redisurl
+  CreateCaptchaFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Timeout: 10
+      CodeUri: bin/createcaptcha
+      Handler: createcaptcha
+      Runtime: go1.x
+      Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Events:
+        Signup:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            RestApiId: !Ref ExampleApi
+            Auth:
+              Authorizer: 'NONE'
+            Path: /createcaptcha
+            Method: POST
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          db_user: !Ref username
+          db_pass: !Ref password
+          db_name: !Ref dbname
+          db_host: !Ref host
+          jwt_key: !Ref jwt
+          email_queue: !Ref emailQueue
+          email_queue_url: !Ref emailQueueUrl
+          redis_url: !Ref redisurl
+  LoginFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: bin/login
+      Handler: login
+      Runtime: go1.x
+      Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Events:
+        Login:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            RestApiId: !Ref ExampleApi
+            Auth:
+              Authorizer: 'NONE'
+            Path: /login
+            Method: POST
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          db_user: !Ref username
+          db_pass: !Ref password
+          db_name: !Ref dbname
+          db_host: !Ref host
+          jwt_key: !Ref jwt
+          redis_url: !Ref redisurl
+  UserInfoFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: bin/userinfo
+      Handler: userinfo
+      Runtime: go1.x
+      Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Events:
+        UserInfo:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            RestApiId: !Ref ExampleApi
+            Path: /userinfo
+            Method: GET
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          db_user: !Ref username
+          db_pass: !Ref password
+          db_name: !Ref dbname
+          db_host: !Ref host
+          jwt_key: !Ref jwt
+          redis_url: !Ref redisurl
+  VerifyEmailFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: bin/verifyemail
+      Handler: verifyemail
+      Runtime: go1.x
+      Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Events:
+        VerifyEmail:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Auth:
+              Authorizer: 'NONE'
+            RestApiId: !Ref ExampleApi
+            Path: /verifyemail
+            Method: POST
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          db_user: !Ref username
+          db_pass: !Ref password
+          db_name: !Ref dbname
+          db_host: !Ref host
+          jwt_key: !Ref jwt
+          redis_url: !Ref redisurl
+  SendMailFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: bin/sendemail
+      Handler: sendemail
+      Runtime: go1.x
+      Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Events:
+        UserInfo:
+          Type: SQS # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Queue: !Ref emailQueue # NOTE: FIFO SQS Queues are not yet supported
+            BatchSize: 10
+            Enabled: false
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          db_user: !Ref username
+          db_pass: !Ref password
+          db_name: !Ref dbname
+          db_host: !Ref host
+          jwt_key: !Ref jwt
+          redis_url: !Ref redisurl
+          email_queue: !Ref emailQueue
+          email_queue_url: !Ref emailQueueUrl
+          prod_link: !Sub 'https://${ExampleApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/'
+
+Outputs:
+  ApiURL:
+    Description: "API URL"
+    Value: !Sub 'https://${ExampleApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/'

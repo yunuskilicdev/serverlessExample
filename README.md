@@ -1,0 +1,1 @@
+https://medium.com/@yunskilic/developing-complete-authorization-modules-with-aws-lambda-go-postgresql-event-driven-sqs-ee641622e890
